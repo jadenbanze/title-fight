@@ -60,7 +60,20 @@ Never set `font-weight: 600/700` on `.font-serif-display` or `.nameplate` — th
 browser synthesises faux-bold and smears the thin strokes. Emphasis comes from
 size and tracking.
 
-### 5. next/og can't read woff2
+### 5. A service worker fetch is `connect-src`, not `img-src`
+Serwist's `defaultCache` ends with a `!sameOrigin` NetworkFirst rule and a
+catch-all, so in production the worker intercepts every Deezer request and
+re-issues it with `fetch()`. A fetch from inside a worker is governed by
+**`connect-src`** regardless of what it returns, so Deezer must be listed there
+as well as in `img-src`/`media-src`. Miss it and artwork loads in dev (worker
+disabled) and silently fails in production — the one combination local testing
+never covers.
+
+`app/sw.ts` also registers `NetworkOnly` routes for `*.dzcdn.net` and `/api/*`
+**ahead of** `defaultCache` (first match wins), so signed preview URLs and the
+payloads embedding them are never cached.
+
+### 6. next/og can't read woff2
 `assets/fonts/InstrumentSerif-Regular.ttf` is vendored so satori can draw the
 "TF" monogram and OG cards. It's server-only and force-included in the
 deployment trace via `outputFileTracingIncludes` (the `fs.readFile` path isn't

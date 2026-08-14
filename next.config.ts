@@ -31,9 +31,12 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
-  // Everything server-side (Deezer, Upstash) is proxied through our own routes,
-  // so the browser only ever talks to this origin. ws: is dev fast refresh.
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+  /* Deezer has to be listed here as well as in img-src/media-src. The service
+     worker intercepts these requests and re-issues them with fetch(), and a
+     fetch from inside a worker is a connect-src request no matter what kind of
+     asset it returns. Omitting it means artwork and audio load in development
+     (no worker) and silently fail in production (worker active). */
+  `connect-src 'self' https://*.dzcdn.net${isDev ? " ws: wss:" : ""}`,
   "upgrade-insecure-requests",
 ].join("; ");
 
