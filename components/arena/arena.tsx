@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { SkipForward } from "lucide-react";
 import { toast } from "sonner";
-import { CLIP_SECONDS, createAudioEngine } from "@/lib/audio";
+import { CLIP_SECONDS, PlaybackError, createAudioEngine } from "@/lib/audio";
 import { ROUND_LABEL, championId, currentBout, seedTracks, tracksForBout } from "@/lib/bracket";
 import {
   EMPTY_HEARD,
@@ -187,13 +187,33 @@ export function Arena({
           () => setPlaying(null),
         );
         markTrackHeard(slug, track.id);
-      } catch {
+      } catch (err) {
         setPlaying(null);
-        toast.error("Tap once more", { description: "Mobile browsers need a direct tap to start audio." });
+        /* Only genuine failures reach here — the engine swallows the routine
+           "interrupted by a newer play()" case. */
+        if (err instanceof PlaybackError && err.kind === "blocked") {
+          toast.error("Playback was blocked", {
+            description: "Your browser wants a direct click on the artwork.",
+          });
+        } else {
+          toast.error("Couldn’t play that preview", {
+            description: "Deezer may have rotated the link. Reload to get a fresh one.",
+          });
+        }
       }
     },
     [tracks, playing, slug],
   );
+
+  /* An expired signed preview fails on the media element, not on play(), so it
+     surfaces here rather than in the catch above. */
+  useEffect(() => {
+    const detach = engine.current?.onError(() => {
+      setPlaying(null);
+      toast.error("That preview expired", { description: "Reload the page for fresh links." });
+    });
+    return detach;
+  }, []);
 
   /* Warm both previews as soon as the bout is known — the second listen and the
      A/B switch then start instantly instead of buffering. */
