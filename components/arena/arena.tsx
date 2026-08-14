@@ -422,17 +422,21 @@ export function Arena({
               animate={{ opacity: 1 }}
               exit={reduce ? undefined : { opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="col-start-1 row-start-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
+              className="col-start-1 row-start-1 flex items-center"
             >
+              {/* The action lives inside CrowdBar so it shares a row with the
+                  bars instead of centring against the labels above them. */}
               <CrowdBar
                 crowd={crowd}
                 you={you}
                 labelA={tracks[0].artist}
                 labelB={tracks[1].artist}
-              />
-              <NextBoutButton
-                onNext={nextBout}
-                label={currentBout(picks) === "champion" ? "Crown it" : "Next bout"}
+                action={
+                  <NextBoutButton
+                    onNext={nextBout}
+                    label={isChampion ? "Crown it" : "Next bout"}
+                  />
+                }
               />
             </motion.div>
           ) : (
