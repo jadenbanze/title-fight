@@ -138,11 +138,25 @@ an election — the tallies are directional, not authoritative.
 
 ```bash
 pnpm dev                  # Turbopack, service worker disabled
-pnpm test                 # node:test — bracket, matching, tokens, slugs
+pnpm test                 # node:test — bracket, matching, tokens, slugs, seeds
 pnpm lint
 pnpm exec tsc --noEmit
 pnpm build                # next build --webpack (emits public/sw.js)
+pnpm verify:seeds         # check every seed still has a full bracket on Deezer
 ```
+
+### Adding titles
+
+`lib/seeds.ts` holds the words the random picker draws from. A word only works if
+Deezer returns **eight different artists** with that exact title — otherwise the
+page 404s. Check candidates before committing them:
+
+```bash
+pnpm verify:seeds Karma Moonlight Shallow
+```
+
+It runs the real lookup, prints the top artists for each hit, and emits a block
+ready to paste into the list.
 
 The production build must run under webpack because Serwist's plugin hooks that pipeline;
 `pnpm build` already does this. See `AGENTS.md` for environment gotchas (notably: Node's

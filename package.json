@@ -9,7 +9,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test tests/**/*.test.ts",
+    "verify:seeds": "tsx scripts/verify-seeds.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.2.3",

@@ -21,6 +21,8 @@ pnpm build                # next build --webpack (required: Serwist needs webpac
 pnpm lint
 pnpm test                 # node:test via tsx
 pnpm exec tsc --noEmit
+pnpm verify:seeds         # audit lib/seeds.ts against live Deezer
+pnpm verify:seeds Rain Fever   # check candidates before adding them
 ```
 
 ## Verification checklist
@@ -66,6 +68,11 @@ statically analysable).
 
 ## Product rules
 
+- **Every word in `lib/seeds.ts` must yield eight different artists on Deezer.**
+  Fewer and `/t/<slug>` 404s, so the random picker and /hot hand out dead
+  titles. Never add a seed by intuition — run `pnpm verify:seeds <Word>` first.
+  A no-argument run audits the whole shipped list and exits non-zero on any
+  failure. Note it is a live network check, so it belongs in review, not CI.
 - A title is an 8-seed single-elim bracket: 1v8, 4v5, 2v7, 3v6.
 - Never persist Deezer preview URLs — they're signed and expire. Store IDs.
 - Never proxy or cache the MP3s. The browser streams them from Deezer directly.
