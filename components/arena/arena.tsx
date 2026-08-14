@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { CLIP_SECONDS, createAudioEngine } from "@/lib/audio";
 import { ROUND_LABEL, championId, currentBout, seedTracks, tracksForBout } from "@/lib/bracket";
 import {
+  EMPTY_HEARD,
+  EMPTY_PICKS,
   EMPTY_STATS,
   clearTournament,
   loadHeardTracks,
@@ -22,7 +24,7 @@ import {
   seenTitleSlugs,
 } from "@/lib/local-stats";
 import { unslugify } from "@/lib/normalize";
-import type { BoutId, CatalogTitle, CrowdSplit, HydratedTrack, TournamentPicks } from "@/lib/types";
+import type { BoutId, CatalogTitle, CrowdSplit, HydratedTrack } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Masthead } from "@/components/site/masthead";
@@ -33,8 +35,6 @@ import { CrowdBar } from "./crowd-bar";
 import { NextBoutButton } from "./next-bout-button";
 import { ShareButton } from "./share-button";
 import { TrackCard } from "./track-card";
-
-const EMPTY_PICKS_REF: TournamentPicks = {};
 
 type MatchupPayload = {
   pairId: string;
@@ -56,36 +56,39 @@ export function Arena({
   const reduce = useReducedMotion();
   const display = unslugify(slug);
   const [title, setTitle] = useState<CatalogTitle | null>(initialTitle);
+  const [titleSlug, setTitleSlug] = useState(slug);
+  if (titleSlug !== slug) {
+    setTitleSlug(slug);
+    setTitle(initialTitle);
+  }
   const seeds = useMemo(() => (title ? seedTracks(title.tracks) : []), [title]);
   const engine = useRef<ReturnType<typeof createAudioEngine> | null>(null);
-  const storedPicks = useSyncExternalStore(subscribeLocal, () => loadTournament(slug), () => EMPTY_PICKS_REF);
-  const [localPicks, setLocalPicks] = useState<TournamentPicks | null>(null);
-  const [picksSlug, setPicksSlug] = useState(slug);
-  const [heardIds, setHeardIds] = useState<number[]>(() => loadHeardTracks(slug));
-  if (picksSlug !== slug) {
-    setPicksSlug(slug);
-    setLocalPicks(null);
-    setTitle(initialTitle);
-    setHeardIds(loadHeardTracks(slug));
-  }
-  const picks = localPicks ?? storedPicks;
+
+  /* Progress, listen history and lifetime stats all live in localStorage and are
+     read through the store so hydration matches the server-rendered HTML. */
+  const picks = useSyncExternalStore(subscribeLocal, () => loadTournament(slug), () => EMPTY_PICKS);
+  const heardIds = useSyncExternalStore(subscribeLocal, () => loadHeardTracks(slug), () => EMPTY_HEARD);
+  const stats = useSyncExternalStore(subscribeLocal, loadStats, () => EMPTY_STATS);
+
   const [matchup, setMatchup] = useState<MatchupPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<"a" | "b" | null>(null);
   const [progress, setProgress] = useState(0);
-  const [showingResult, setShowingResult] = useState(false);
   const [crowd, setCrowd] = useState<CrowdSplit | null>(null);
   const [you, setYou] = useState<"a" | "b" | null>(null);
   const [revealing, setRevealing] = useState(false);
-  const storedStats = useSyncExternalStore(subscribeLocal, loadStats, () => EMPTY_STATS);
-  const [localStats, setLocalStats] = useState<typeof storedStats | null>(null);
-  const stats = localStats ?? storedStats;
+  /* Voting advances `picks` immediately, but the cards must keep showing the
+     bout that was just judged until the crowd split is dismissed — otherwise
+     the next pair slides in underneath the result. */
+  const [judgedBout, setJudgedBout] = useState<BoutId | null>(null);
   const lastPairKey = useRef<string | null>(null);
 
-  const bout = currentBout(picks);
-  const pair = title && bout !== "champion" ? tracksForBout(seeds, bout, picks) : null;
-  const pairKey = pair ? `${bout}:${pair[0].id}-${pair[1].id}` : String(bout);
-  const isChampion = bout === "champion";
+  const nextUp = currentBout(picks);
+  const isChampion = nextUp === "champion";
+  const showingResult = judgedBout !== null;
+  const bout: BoutId | null = judgedBout ?? (isChampion ? null : nextUp);
+  const pair = title && bout ? tracksForBout(seeds, bout, picks) : null;
+  const pairKey = pair && bout ? `${bout}:${pair[0].id}-${pair[1].id}` : String(nextUp);
 
   /* The field already carries previews and artwork, so a bout can paint the
      instant it's known. /api/matchup is only needed for its signed vote token;
@@ -141,9 +144,6 @@ export function Arena({
       setMatchup(null);
       setPlaying(null);
       setProgress(0);
-      setShowingResult(false);
-      setCrowd(null);
-      setYou(null);
       void engine.current?.pause();
       try {
         const res = await fetch(`/api/matchup?slug=${slug}&bout=${boutId}&a=${a}&b=${b}`, { cache: "no-store" });
@@ -164,11 +164,11 @@ export function Arena({
   }, []);
 
   useEffect(() => {
-    if (!title || isChampion || !pair || showingResult) return;
+    if (!title || !bout || !pair || showingResult) return;
     if (lastPairKey.current === pairKey) return;
     lastPairKey.current = pairKey;
     void loadMatchup(bout, pair[0].id, pair[1].id);
-  }, [title, isChampion, pair, pairKey, bout, showingResult, loadMatchup]);
+  }, [title, bout, pair, pairKey, showingResult, loadMatchup]);
 
   const play = useCallback(
     async (side: "a" | "b") => {
@@ -186,7 +186,7 @@ export function Arena({
           (time) => setProgress(Math.min(CLIP_SECONDS, time)),
           () => setPlaying(null),
         );
-        setHeardIds(markTrackHeard(slug, track.id));
+        markTrackHeard(slug, track.id);
       } catch {
         setPlaying(null);
         toast.error("Tap once more", { description: "Mobile browsers need a direct tap to start audio." });
@@ -204,7 +204,7 @@ export function Arena({
 
   const pick = useCallback(
     async (side: "a" | "b") => {
-      if (!matchup || !tracks || showingResult || isChampion || revealing) return;
+      if (!matchup || !tracks || !bout || showingResult || revealing) return;
       const winnerId = tracks[side === "a" ? 0 : 1].id;
       const isFinal = bout === "f";
       void engine.current?.pause();
@@ -221,11 +221,10 @@ export function Arena({
         return;
       }
 
-      const nextPicks = saveTournamentPick(slug, bout as BoutId, winnerId);
+      const nextPicks = saveTournamentPick(slug, bout, winnerId);
       const agreed =
         (side === "a" && json.crowd.a >= json.crowd.b) || (side === "b" && json.crowd.b >= json.crowd.a);
-      const nextStats = recordBout(agreed);
-      setLocalStats(nextStats);
+      recordBout(agreed);
       setYou(side);
       setCrowd(json.crowd);
 
@@ -233,14 +232,13 @@ export function Arena({
         const champ = seeds.find((track) => track.id === championId(nextPicks));
         if (champ) recordChampion({ slug, display, championArtist: champ.artist, agreed, at: Date.now() });
         setRevealing(true);
-        setLocalPicks(nextPicks);
         return;
       }
 
-      setShowingResult(true);
-      setLocalPicks(nextPicks);
+      // Hold the cards on this bout until the crowd split is dismissed.
+      setJudgedBout(bout);
     },
-    [matchup, tracks, showingResult, isChampion, revealing, slug, display, bout, seeds],
+    [matchup, tracks, bout, showingResult, revealing, slug, display, seeds],
   );
 
   useEffect(() => {
@@ -259,7 +257,7 @@ export function Arena({
   }, [play, pick]);
 
   const nextBout = () => {
-    setShowingResult(false);
+    setJudgedBout(null);
     setCrowd(null);
     setYou(null);
   };
@@ -271,11 +269,10 @@ export function Arena({
   };
 
   const rematch = () => {
+    // Clearing storage notifies the store, so picks and listen history reset.
     clearTournament(slug);
     lastPairKey.current = null;
-    setLocalPicks({});
-    setHeardIds([]);
-    setShowingResult(false);
+    setJudgedBout(null);
     setRevealing(false);
     setCrowd(null);
     setYou(null);
@@ -284,7 +281,7 @@ export function Arena({
   const champ = championId(picks);
   const champTrack = champ ? seeds.find((track) => track.id === champ) : null;
   /* Voting needs the signed token; everything else can paint without it. */
-  const canPick = heard.a && heard.b && !showingResult && !isChampion && Boolean(matchup?.token);
+  const canPick = heard.a && heard.b && !showingResult && !!bout && Boolean(matchup?.token);
   const bothHeard = heard.a && heard.b;
 
   const playChampion = useCallback(() => {
@@ -339,8 +336,8 @@ export function Arena({
       {/* Title block — fixed rows so advancing a round can't nudge anything */}
       <section className="shrink-0 border-t border-rule pt-2">
         <div className="flex h-5 items-center justify-between gap-4">
-          <p className="eyebrow truncate">{ROUND_LABEL[bout as BoutId]}</p>
-          <BracketRail picks={picks} current={bout} />
+          <p className="eyebrow truncate">{bout ? ROUND_LABEL[bout] : "Champion"}</p>
+          <BracketRail picks={picks} current={bout ?? "champion"} />
         </div>
         <h1 className="title-display font-serif-display mt-1 truncate leading-[0.95]">{display}</h1>
       </section>

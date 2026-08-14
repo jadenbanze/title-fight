@@ -37,6 +37,29 @@ export const EMPTY_STATS: LocalStats = {
   recents: [],
 };
 
+/* ----------------------------------------------------------------------------
+   A tiny external store over localStorage.
+
+   Components read this through useSyncExternalStore rather than useState, which
+   matters for two reasons:
+
+   1. Hydration. Reading localStorage in a useState initializer makes the
+      client's first render disagree with the server's HTML (the server has no
+      storage, so it renders the empty state). useSyncExternalStore takes a
+      separate server snapshot that React also uses during hydration, then
+      swaps in the real value on the next render — no mismatch.
+   2. Reactivity. `storage` events only fire in *other* tabs, so writes from
+      this tab have to notify subscribers explicitly.
+
+   Snapshots must be reference-stable between writes or React re-renders
+   forever, hence the raw-string cache below.
+   ---------------------------------------------------------------------------- */
+const listeners = new Set<() => void>();
+
+function notifyLocalChange(): void {
+  for (const listener of listeners) listener();
+}
+
 const jsonCache = new Map<string, { raw: string; value: unknown }>();
 
 function readJson<T>(key: string, fallback: T): T {
@@ -81,6 +104,7 @@ export function saveStats(stats: LocalStats): void {
   jsonCache.set(STATS_KEY, { raw, value: stats });
   statsRaw = raw;
   statsSnapshot = stats;
+  notifyLocalChange();
 }
 
 function cloneStats(): LocalStats {
@@ -117,7 +141,10 @@ export function loadTournaments(): Record<string, SavedTournament> {
   return readJson<Record<string, SavedTournament>>(TOURNAMENTS_KEY, {});
 }
 
-const EMPTY_PICKS: TournamentPicks = {};
+/* Exported so the server snapshot passed to useSyncExternalStore is the *same*
+   reference these loaders return when storage is empty — otherwise hydration
+   burns an extra render swapping one empty object for another. */
+export const EMPTY_PICKS: TournamentPicks = {};
 
 export function loadTournament(slug: string): TournamentPicks {
   if (typeof window === "undefined") return EMPTY_PICKS;
@@ -125,14 +152,20 @@ export function loadTournament(slug: string): TournamentPicks {
 }
 
 export function subscribeLocal(onChange: () => void): () => void {
+  listeners.add(onChange);
+  // `storage` covers other tabs; the local set covers this one.
   window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }
 
 function writeTournaments(all: Record<string, SavedTournament>): void {
   const raw = JSON.stringify(all);
   window.localStorage.setItem(TOURNAMENTS_KEY, raw);
   jsonCache.set(TOURNAMENTS_KEY, { raw, value: all });
+  notifyLocalChange();
 }
 
 export function saveTournamentPick(slug: string, boutId: BoutId, winnerId: number): TournamentPicks {
@@ -144,7 +177,7 @@ export function saveTournamentPick(slug: string, boutId: BoutId, winnerId: numbe
   return picks;
 }
 
-const EMPTY_HEARD: number[] = [];
+export const EMPTY_HEARD: number[] = [];
 
 export function loadHeardTracks(slug: string): number[] {
   if (typeof window === "undefined") return EMPTY_HEARD;
