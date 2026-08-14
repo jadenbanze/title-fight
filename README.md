@@ -150,15 +150,13 @@ The production build must run under webpack because Serwist's plugin hooks that 
 
 ## License
 
-Source code is [MIT](./LICENSE). Song metadata, artwork and audio previews belong to their
-rights holders and are not covered by it; the bundled typeface is under the SIL OFL.
+Source code is [MIT](./LICENSE).
 
-## Credits
-
-Song metadata, artwork and previews come from the [Deezer API](https://developers.deezer.com)
-and remain the property of their owners. Every card links back to the track on Deezer.
-Title Fight is a fan project and is not affiliated with Deezer.
+Song metadata, artwork and audio previews come from the
+[Deezer API](https://developers.deezer.com), belong to their rights holders, and are **not**
+covered by that license — nothing is stored, and every card links back to the track on
+Deezer. Title Fight is a fan project, not affiliated with Deezer.
 
 Typeset in [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif), Inter and
-JetBrains Mono. `assets/fonts/` bundles Instrument Serif for server-side icon rendering under
-the SIL Open Font License (see `assets/fonts/OFL.txt`).
+JetBrains Mono, all under the SIL Open Font License. Full attribution in
+[NOTICE.md](./NOTICE.md).
