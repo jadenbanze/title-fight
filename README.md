@@ -126,9 +126,10 @@ rendered on — votes accumulate globally across everyone who plays that matchup
   characters before they reach a Deezer query or a Redis key.
 - **No PII.** An anonymous `tf_vid` cookie (httpOnly, SameSite=Lax) and a salted IP hash.
   No accounts, no emails, no tracking. Streaks and brackets live in `localStorage`.
-- **Security headers** in `next.config.ts`: HSTS, `nosniff`, `X-Frame-Options: DENY`,
-  a restrictive `Permissions-Policy`, and a CSP shipped report-only (flip the header name
-  to enforce once you've checked the console).
+- **Security headers** in `next.config.ts`: an **enforced** Content-Security-Policy, HSTS,
+  `nosniff`, `X-Frame-Options: DENY`, and a restrictive `Permissions-Policy`. The browser
+  only ever talks to this origin plus Deezer's CDNs — everything server-side is proxied
+  through our own routes. `'unsafe-eval'` and websocket origins are development-only.
 
 One honest limitation: clearing cookies lets you vote on a pairing again. This is a toy, not
 an election — the tallies are directional, not authoritative.
@@ -146,6 +147,11 @@ pnpm build                # next build --webpack (emits public/sw.js)
 The production build must run under webpack because Serwist's plugin hooks that pipeline;
 `pnpm build` already does this. See `AGENTS.md` for environment gotchas (notably: Node's
 `fetch` fails behind TLS-inspecting corporate proxies, so `lib/http.ts` falls back to curl).
+
+## License
+
+Source code is [MIT](./LICENSE). Song metadata, artwork and audio previews belong to their
+rights holders and are not covered by it; the bundled typeface is under the SIL OFL.
 
 ## Credits
 

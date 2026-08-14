@@ -2,6 +2,8 @@
   "name": "title-fight",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "description": "Same name, different song — an eight-song bracket for tracks that share a title.",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
