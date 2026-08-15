@@ -6,7 +6,6 @@ import { RotateCcw, Shuffle } from "lucide-react";
 import type { CatalogTrack, CrowdSplit } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Masthead } from "@/components/site/masthead";
-import { ShareButton } from "./share-button";
 import { ShareResult } from "./share-result";
 
 export function Champion({
@@ -119,10 +118,9 @@ export function Champion({
               display={display}
               winnerId={champion.id}
               championArtist={champion.artist}
-              shareUrl={shareUrl}
+              titleUrl={shareUrl}
             />
-            <ShareButton url={shareUrl} label="Copy link" />
-            <Button variant="outline" onClick={onAnother}>
+            <Button variant="ghost" size="sm" onClick={onAnother}>
               <Shuffle />
               New title
             </Button>

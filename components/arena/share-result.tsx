@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Share2 } from "lucide-react";
+import { Check, ImageDown, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -10,62 +10,78 @@ type Props = {
   display: string;
   winnerId: number;
   championArtist: string;
-  shareUrl: string;
+  /** Absolute URL of this title's arena, e.g. https://host/t/money */
+  titleUrl: string;
 };
 
 /**
- * Shares the result as an image.
+ * Shares the result.
  *
- * The card is rendered server-side (see /api/share-card) rather than screenshot
- * in the browser: no canvas rasterising of live DOM, no tainted-canvas problem
- * from the cross-origin album art, and the output is identical on every device.
- *
- * Where the Web Share API can carry files — essentially all mobile — this hands
- * the PNG straight to the share sheet. Desktop browsers mostly can't, so it
- * falls back to downloading the image and copying the link.
+ * Two separate actions on purpose. Passing `files` and `url` to navigator.share
+ * together is not portable: some desktop implementations concatenate the URL,
+ * the temporary file path and the text into one blob, which pastes as a dead
+ * link. So the primary action shares a real page and nothing else, and saving
+ * the image is its own button.
  */
-export function ShareResult({ slug, display, winnerId, championArtist, shareUrl }: Props) {
-  const [busy, setBusy] = useState(false);
+export function ShareResult({ slug, display, winnerId, championArtist, titleUrl }: Props) {
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const text = `${championArtist} won my “${display}” bracket. Who would you pick?`;
+  const resultUrl = `${titleUrl}/r/${winnerId}`;
+  const text = `I crowned ${championArtist} the best song called “${display}”. What would you pick?`;
 
-  const share = async () => {
-    if (busy) return;
-    setBusy(true);
+  const shareLink = async () => {
+    // url only — the page carries its own preview image when it unfurls.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Title Fight", text, url: resultUrl });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        // Fall through to the clipboard.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(resultUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+      toast.success("Link copied", { description: "It shows the result when pasted." });
+    } catch {
+      toast.error("Couldn’t copy", { description: resultUrl });
+    }
+  };
+
+  const saveImage = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const res = await fetch(`/api/share-card?slug=${encodeURIComponent(slug)}&w=${winnerId}`);
       if (!res.ok) throw new Error("card unavailable");
       const blob = await res.blob();
-      const file = new File([blob], `title-fight-${slug}.png`, { type: "image/png" });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text, url: shareUrl });
-        return;
-      }
-
-      // No file sharing here — save the image and put the link on the clipboard.
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = file.name;
+      link.download = `title-fight-${slug}.png`;
       link.click();
       URL.revokeObjectURL(objectUrl);
-
-      await navigator.clipboard.writeText(`${text} ${shareUrl}`).catch(() => undefined);
-      toast.success("Image saved", { description: "Caption and link copied too." });
-    } catch (error) {
-      // A cancelled share sheet is a normal outcome, not a failure.
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      toast.error("Couldn’t build the image", { description: "The link still works." });
+      toast.success("Image saved");
+    } catch {
+      toast.error("Couldn’t build the image", { description: "The share link still works." });
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
   return (
-    <Button type="button" onClick={share} disabled={busy}>
-      {busy ? <Loader2 className="animate-spin" /> : <Share2 />}
-      Share result
-    </Button>
+    <>
+      <Button type="button" onClick={shareLink}>
+        {copied ? <Check /> : <Share2 />}
+        {copied ? "Copied" : "Share result"}
+      </Button>
+      <Button type="button" variant="outline" onClick={saveImage} disabled={saving}>
+        {saving ? <Loader2 className="animate-spin" /> : <ImageDown />}
+        Save image
+      </Button>
+    </>
   );
 }
