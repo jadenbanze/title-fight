@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { unslugify } from "./normalize";
 import { DISPLAY_FONT, displayFont } from "./og-font";
 import { CARD_LANDSCAPE } from "./share-card";
+import { getSiteHost } from "./site";
 
 /**
  * Plain card for when a verdict can't be resolved — an unfurling crawler should
@@ -25,7 +26,12 @@ export async function fallbackCard(slug: string) {
           fontFamily: DISPLAY_FONT,
         }}
       >
-        <span style={{ fontSize: 34 }}>Title Fight</span>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: 38, lineHeight: 1.1 }}>Title Fight</span>
+          <span style={{ marginTop: 4, fontSize: 20, color: "#6F6558", letterSpacing: 1 }}>
+            {getSiteHost()}
+          </span>
+        </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <span style={{ fontSize: 96, lineHeight: 1 }}>{display}</span>
           <span style={{ marginTop: 24, fontSize: 30, color: "#6F6558" }}>

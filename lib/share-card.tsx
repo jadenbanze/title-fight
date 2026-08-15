@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { fetchImageDataUri } from "./http";
 import { DISPLAY_FONT, displayFont } from "./og-font";
+import { getShareLabel, getSiteHost } from "./site";
 import type { Verdict } from "./verdict";
 
 export const CARD_LANDSCAPE = { width: 1200, height: 630 };
@@ -23,6 +24,8 @@ export async function renderShareCard(
 
   const art = portrait ? 520 : 340;
   const nameSize = verdict.champion.artist.length > 18 ? (portrait ? 72 : 60) : portrait ? 104 : 82;
+  const host = getSiteHost();
+  const playUrl = getShareLabel(`/t/${verdict.slug}`);
 
   return new ImageResponse(
     (
@@ -39,8 +42,20 @@ export async function renderShareCard(
           fontFamily: DISPLAY_FONT,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <span style={{ fontSize: portrait ? 40 : 34 }}>Title Fight</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: portrait ? 44 : 38, lineHeight: 1.1 }}>Title Fight</span>
+            <span
+              style={{
+                marginTop: 4,
+                fontSize: portrait ? 24 : 20,
+                color: "#6F6558",
+                letterSpacing: 1,
+              }}
+            >
+              {host}
+            </span>
+          </div>
           <span style={{ fontSize: portrait ? 26 : 22, color: "#6F6558" }}>
             {verdict.seed ? `No. ${verdict.seed} seed` : "Champion"}
           </span>
@@ -93,6 +108,8 @@ export async function renderShareCard(
           </div>
         </div>
 
+        {/* The card outlives the link that carried it — someone screenshotting
+            this needs the full address to find their way back. */}
         <div
           style={{
             display: "flex",
@@ -102,8 +119,10 @@ export async function renderShareCard(
             paddingTop: 24,
           }}
         >
-          <span style={{ fontSize: portrait ? 28 : 24, color: "#6F6558" }}>What would you pick?</span>
-          <span style={{ fontSize: portrait ? 28 : 24 }}>{`/t/${verdict.slug}`}</span>
+          <span style={{ fontSize: portrait ? 28 : 24, color: "#6F6558" }}>
+            Settle it yourself at
+          </span>
+          <span style={{ fontSize: portrait ? 30 : 26 }}>{playUrl}</span>
         </div>
       </div>
     ),

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { unslugify } from "@/lib/normalize";
 import { DISPLAY_FONT, displayFont } from "@/lib/og-font";
+import { getShareLabel } from "@/lib/site";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -24,7 +25,12 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           padding: 72,
         }}
       >
-        <div style={{ display: "flex", fontFamily: DISPLAY_FONT, fontSize: 44 }}>Title Fight</div>
+        <div style={{ display: "flex", flexDirection: "column", fontFamily: DISPLAY_FONT }}>
+          <span style={{ fontSize: 44, lineHeight: 1.1 }}>Title Fight</span>
+          <span style={{ marginTop: 4, fontSize: 22, color: "#6F6558", letterSpacing: 1 }}>
+            {getShareLabel(`/t/${slug}`)}
+          </span>
+        </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
             style={{

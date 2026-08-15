@@ -92,9 +92,14 @@ Deploys to Vercel's free tier as-is. Add a free
 | `UPSTASH_REDIS_REST_TOKEN` | prod | ↳ |
 | `VOTE_SECRET` | **prod** | HMAC key for vote tokens — build fails without it |
 | `IP_HASH_SALT` | **prod** | Salts hashed IPs for rate limiting |
-| `NEXT_PUBLIC_SITE_URL` | prod | Share links and OG images |
+| `NEXT_PUBLIC_SITE_URL` | prod | Share links, OG images, and the domain printed on result cards |
 
 See `.env.example`. Generate secrets with `openssl rand -base64 32`.
+
+**Changing domain** is a one-line move: update `NEXT_PUBLIC_SITE_URL` and redeploy.
+Every share link, OG tag and the branding baked into result cards reads from it. On
+Vercel it falls back to the project's production domain, so a forgotten variable
+can't publish cards pointing at `localhost`.
 
 A full bracket costs roughly 30 Redis commands, so Upstash's 10k/day free tier covers about
 300 brackets a day.
