@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
-import { currentBout } from "@/lib/bracket";
-import { loadTournaments, seenTitleSlugs } from "@/lib/local-stats";
+import { loadTournaments, resumableTournament, seenTitleSlugs } from "@/lib/local-stats";
 
 const WORDS = ["Baby", "Stay", "Halo", "Ghost", "Paradise", "Toxic"];
 
@@ -52,9 +51,10 @@ function HomeRedirect() {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-    const unfinished = Object.values(loadTournaments()).find(
-      (tournament) => currentBout(tournament.picks) !== "champion" && !extra.includes(tournament.slug),
-    );
+
+    /* Only a bracket with real progress is worth resuming; otherwise every
+       visit should hand out a title they haven't played. */
+    const unfinished = resumableTournament(loadTournaments(), { exclude: extra });
     if (unfinished) {
       router.replace(`/t/${unfinished.slug}`);
       return;

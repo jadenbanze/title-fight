@@ -1,3 +1,4 @@
+import { currentBout, pickCount } from "./bracket";
 import type { BoutId, TournamentPicks } from "./types";
 
 export const STATS_KEY = "tf:you";
@@ -208,4 +209,36 @@ export function clearTournament(slug: string): void {
 
 export function seenTitleSlugs(): string[] {
   return Object.keys(loadTournaments());
+}
+
+/** How long an abandoned bracket stays worth returning to. */
+export const RESUME_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The bracket to drop the player back into, or null to start something new.
+ *
+ * Playing a single preview is enough to create a record (`markTrackHeard`
+ * writes one), so "has an entry" is far too loose a test — it would pin the
+ * player to a title they sampled once and left, and they'd never see a fresh
+ * one again. Resuming needs an actual pick, and a recent one.
+ */
+export function resumableTournament(
+  all: Record<string, SavedTournament>,
+  options: { exclude?: string[]; now?: number } = {},
+): SavedTournament | null {
+  const skip = new Set(options.exclude ?? []);
+  const now = options.now ?? Date.now();
+
+  return (
+    Object.values(all)
+      .filter(
+        (tournament) =>
+          !skip.has(tournament.slug) &&
+          pickCount(tournament.picks) > 0 &&
+          currentBout(tournament.picks) !== "champion" &&
+          now - tournament.updatedAt <= RESUME_WINDOW_MS,
+      )
+      // Most recently touched first, so it's the one they actually remember.
+      .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null
+  );
 }

@@ -7,8 +7,10 @@ import type { CatalogTrack, CrowdSplit } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Masthead } from "@/components/site/masthead";
 import { ShareButton } from "./share-button";
+import { ShareResult } from "./share-result";
 
 export function Champion({
+  slug,
   display,
   champion,
   runnerUp,
@@ -19,6 +21,7 @@ export function Champion({
   onAnother,
   onRematch,
 }: {
+  slug: string;
   display: string;
   champion: CatalogTrack;
   runnerUp?: CatalogTrack;
@@ -90,7 +93,7 @@ export function Champion({
             initial={reduce ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14 }}
-            className="text-balance-display mt-1 font-serif-display text-[clamp(2rem,min(9vw,7vh),3.75rem)] leading-[0.95]"
+            className="text-balance-display mt-1 font-serif-display text-[clamp(1.6rem,min(8vw,6.5vh),3.5rem)] leading-[1.05] [overflow-wrap:anywhere]"
           >
             {champion.artist}
           </motion.h1>
@@ -111,8 +114,15 @@ export function Champion({
             transition={{ delay: 0.26 }}
             className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start"
           >
-            <ShareButton url={shareUrl} label="Challenge a friend" />
-            <Button onClick={onAnother}>
+            <ShareResult
+              slug={slug}
+              display={display}
+              winnerId={champion.id}
+              championArtist={champion.artist}
+              shareUrl={shareUrl}
+            />
+            <ShareButton url={shareUrl} label="Copy link" />
+            <Button variant="outline" onClick={onAnother}>
               <Shuffle />
               New title
             </Button>

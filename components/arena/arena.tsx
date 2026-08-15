@@ -24,6 +24,7 @@ import {
   seenTitleSlugs,
 } from "@/lib/local-stats";
 import { unslugify } from "@/lib/normalize";
+import { titleScale } from "@/lib/typography";
 import type { BoutId, CatalogTitle, CrowdSplit, HydratedTrack } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -329,6 +330,7 @@ export function Arena({
     const runnerUp = finalists?.find((t) => t.id !== champTrack.id);
     return (
       <Champion
+        slug={slug}
         display={display}
         champion={champTrack}
         runnerUp={runnerUp}
@@ -359,7 +361,12 @@ export function Arena({
           <p className="eyebrow truncate">{bout ? ROUND_LABEL[bout] : "Champion"}</p>
           <BracketRail picks={picks} current={bout ?? "champion"} />
         </div>
-        <h1 className="title-display font-serif-display mt-1 truncate leading-[0.95]">{display}</h1>
+        <h1
+          className="title-display font-serif-display mt-1"
+          style={{ "--title-scale": titleScale(display) } as React.CSSProperties}
+        >
+          {display}
+        </h1>
       </section>
 
       {error && (

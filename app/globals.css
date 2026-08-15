@@ -209,8 +209,16 @@ body {
   }
 }
 
+/* Scaled by title length (see lib/typography.ts) so long names shrink to fit
+   rather than overflow.
+
+   line-height stays at or above 1: a shorter line box combined with the
+   `overflow: hidden` that any clipping utility brings along slices the tails
+   off g, y, p and j — which is most of the catalogue. */
 .title-display {
-  font-size: var(--title-size);
+  font-size: calc(var(--title-size) * var(--title-scale, 1));
+  line-height: 1.04;
+  overflow-wrap: anywhere;
 }
 
 .eyebrow {

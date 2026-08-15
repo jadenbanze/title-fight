@@ -45,6 +45,40 @@ async function curlJson<T>(url: string): Promise<T> {
   return JSON.parse(stdout) as T;
 }
 
+/**
+ * Fetches binary data as a data URI, for inlining into next/og images.
+ *
+ * satori can load a remote `<img src>` itself, but that fetch goes through Node
+ * and dies on the same TLS interception `fetchJson` works around — so the cover
+ * is pulled here, with the same curl fallback, and handed over already inlined.
+ */
+export async function fetchImageDataUri(url: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    if (!res.ok) throw new Error(`Upstream responded ${res.status}`);
+    const type = res.headers.get("content-type") ?? "image/jpeg";
+    const base64 = Buffer.from(await res.arrayBuffer()).toString("base64");
+    return `data:${type};base64,${base64}`;
+  } catch (error) {
+    if (!isCorpTlsFailure(error)) return null;
+    try {
+      const { stdout } = await execFileAsync(
+        "curl",
+        ["-sS", "--max-time", "15", "--output", "-", "--", url],
+        { encoding: "buffer", maxBuffer: 12 * 1024 * 1024 },
+      );
+      if (!stdout.length) return null;
+      return `data:image/jpeg;base64,${stdout.toString("base64")}`;
+    } catch {
+      return null;
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchJson<T>(url: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
