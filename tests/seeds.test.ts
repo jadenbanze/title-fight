@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { slugifyTitle, unslugify } from "../lib/normalize";
-import { TITLE_SEEDS, randomSeed } from "../lib/seeds";
+import { TITLE_SEEDS, randomSeed, seedPool } from "../lib/seeds";
 import { isValidSlug } from "../lib/slug";
 
 /**
@@ -39,6 +39,22 @@ describe("title seeds", () => {
     const exclude = TITLE_SEEDS.slice(0, TITLE_SEEDS.length - 1).map(slugifyTitle);
     const picked = randomSeed(exclude);
     assert.equal(picked, TITLE_SEEDS[TITLE_SEEDS.length - 1]);
+  });
+
+  it("excludes every seed by its own slug", () => {
+    /* Comparing a lowercased seed against a slug silently fails the moment a
+       title contains a space, and the picker starts repeating that title.
+       Asserting on the pool rather than a draw keeps this deterministic. */
+    for (const seed of TITLE_SEEDS) {
+      const pool = seedPool([slugifyTitle(seed)]);
+      assert.equal(pool.includes(seed), false, `"${seed}" survived its own exclusion`);
+      assert.equal(pool.length, TITLE_SEEDS.length - 1);
+    }
+  });
+
+  it("covers the multi-word case that single words can't", () => {
+    const multiWord = TITLE_SEEDS.filter((seed) => seed.includes(" "));
+    assert.ok(multiWord.length > 0, "expected at least one multi-word seed to exercise slugging");
   });
 
   it("falls back to the full pool once everything is excluded", () => {

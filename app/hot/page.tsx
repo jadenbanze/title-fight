@@ -35,7 +35,8 @@ export default function HotPage() {
           Pick your fight
         </h1>
         <p className="mt-1.5 text-sm text-ink-soft">
-          Deezer draws the eight most popular songs sharing the name.
+          {titles ? `${titles.length} titles.` : "Loading the index."} Deezer draws the eight most
+          popular songs sharing each name.
         </p>
       </div>
 
